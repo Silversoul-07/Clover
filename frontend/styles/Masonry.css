@@ -1,0 +1,66 @@
+.masonry {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-auto-rows: 10px;
+  grid-gap: 1rem;
+  padding: 1rem;
+}
+
+.masonry-item {
+  grid-row-end: span 25; /* Default span, will be calculated in JS */
+  break-inside: avoid;
+  border-radius: 8px;
+  overflow: hidden;
+  opacity: 0;
+  animation: fadeIn 0.5s ease forwards;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lazy-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.masonry-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .masonry {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .masonry.visual-search {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .masonry {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .masonry {
+    grid-template-columns: 1fr;
+  }
+}

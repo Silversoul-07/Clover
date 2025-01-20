@@ -1,0 +1,5 @@
+add s3 and cloud postgres support
+add experimental backup, restore, transfer, dev mode
+ai image detector
+aesthetic scorer
+thumbnail, cluster following user likes and images and collection
