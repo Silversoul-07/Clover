@@ -4,21 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 import psutil
 from contextlib import asynccontextmanager
 
-from .database import Base, engine
+from .database import Base, engine, init_db
 from .users.route import router as user_router
-from .inference import manager
-from .minio import minio_client
-from .milvus import milvus_service
+from .minioclient import minio_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    init_db(Base, engine)
     minio_client.create_bucket()
-    milvus_service.create()
 
     yield
 
-    await manager.unload()
 
 app = FastAPI(lifespan=lifespan)
 

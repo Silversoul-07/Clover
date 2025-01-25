@@ -4,7 +4,7 @@ import { getCookie } from "@/lib/actions";
 const apiClient = async (endpoint: string, options: RequestInit = {}) => {
   const baseUrl =
     typeof window === "undefined" // Running on the server
-      ? "http://backend:8000/api/v1" // e.g., "http://backend:port"
+      ? "http://localhost:8000/api/v1" // e.g., "http://backend:port"
       : "http://localhost:8000/api/v1"; // e.g., "http://localhost:3000"
 
   const token = await getCookie('access_token');

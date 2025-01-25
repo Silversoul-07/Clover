@@ -13,12 +13,10 @@ import os
 from PIL import Image, ImageSequence
 from imagehash import phash
 import asyncio
-from ..inference import manager, ClipEmbedder
-from ..milvus import milvus_service
-from .crud import CacheManager
-from ..database import get_db
-from functools import wraps
+# import requests
+from ..config import get_env
 
+env = get_env()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -36,29 +34,6 @@ async def validate_user(token:str = Depends(oauth2_scheme)) -> str:
     return user_id
 
 
-# Cache dependency
-def get_cache(db=Depends(get_db)):
-    return CacheManager(db)
-
-# Cache decorator
-def cached(expire_in: Optional[int] = None):
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, cache: CacheManager = Depends(get_cache), **kwargs):
-            # Generate cache key from function name and arguments
-            cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            
-            # Try to get from cache
-            cached_value = await cache.get(cache_key)
-            if cached_value is not None:
-                return cached_value
-            
-            # If not in cache, execute function and cache result
-            result = await func(*args, **kwargs)
-            await cache.set(cache_key, result, expire_in)
-            return result
-        return wrapper
-    return decorator
 
 async def verify_password(plain_password, hashed_password) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -97,6 +72,20 @@ async def hash(image: Image):
     value = await asyncio.to_thread(phash, image)
     return str(value)
 
+async def text2vec(text: str):
+    response = requests.post(f"{env.ml_url}/api/v2/clip", json={"text": text})
+    if response.status_code != 200:
+        return None
+    return response.json()["embeddings"]
+
+async def img2vec(image: Image):
+    response = requests.post(f"{env.ml_url}/api/v2/clip", files={"image": image})
+    if response.status_code != 200:
+        return None
+    return response.json()["embeddings"]
+    
+
+
 async def process_embeddings(image_id:str, image: Image.Image, text: str):
     if not isinstance(image, Image.Image):
         raise ValueError("Invalid image type. Must be PIL Image.")
@@ -113,3 +102,21 @@ async def process_embeddings(image_id:str, image: Image.Image, text: str):
         image_embed.tolist(),
         merged_embed.tolist(),
     )
+
+import numpy as np
+from PIL import Image
+import torchvision.transforms as T
+import requests
+
+def preprocess_image(image_path):
+    transform = T.Compose([
+        T.Resize(224, interpolation=T.InterpolationMode.BICUBIC),
+        T.CenterCrop(224),
+        T.ToTensor(),
+        T.Normalize((0.48145466, 0.4578275, 0.40821073), 
+                   (0.26862954, 0.26130258, 0.27577711))
+    ])
+    
+    image = Image.open(image_path).convert('RGB')
+    image = transform(image).numpy()
+    return np.expand_dims(image, 0).flatten().tolist()

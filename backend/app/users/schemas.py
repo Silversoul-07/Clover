@@ -110,7 +110,7 @@ class ElementList(BaseModel):
         from_attributes = True
         extra = "ignore"
 
-class Recommedations(ElementList):
+class Feed(ElementList):
     Tags: List[str] = ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"]
     class Config:
         from_attributes = True
@@ -142,3 +142,12 @@ class SimilarElements(ElementBase):
     class Config:
         from_attributes = True
         extra = "ignore"
+
+class SearchResult(BaseModel):
+    image_id: str
+    score: float
+
+class EmbeddingCreate(BaseModel):
+    image_id: str
+    image_embedding: List[float]
+    text_embedding: Optional[List[float]] = None

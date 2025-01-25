@@ -1,10 +1,9 @@
-import random
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form, BackgroundTasks
+from fastapi.responses import JSONResponse
 from PIL import Image
 import io
 from typing import Optional
 
-import numpy as np
 from ..database import get_db
 from sqlalchemy.orm import Session
 from .utils import validate_user
@@ -12,16 +11,14 @@ from . import utils, schemas, models, crud
 import datetime
 import uuid
 import blurhash
-from ..inference import manager, ClipEmbedder
-from ..minio import minio_client
-from ..milvus import milvus_service
+from ..minioclient import minio_client
+from ..pgcache import cached
 
 router = APIRouter(prefix="/api/v1")
 
-from fastapi.responses import JSONResponse
 
 @router.post("/token", response_model=None, tags=["token"])
-async def dummy_token(
+async def token(
     username: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
@@ -87,7 +84,8 @@ async def create_user(
             detail=str(e)
         )
 
-@router.get("/user/{username}", response_model=schemas.UserDetail, tags=["users"])  
+@router.get("/user/{username}", response_model=schemas.UserDetail, tags=["users"])
+@cached(expire_in=300)
 async def get_user_from_db(
     username: str, 
     db: Session = Depends(get_db),
@@ -164,6 +162,7 @@ async def create_cluster(
     return {"id": cluster.id}   
 
 @router.get("/user/{username}/cluster/{title}", response_model=schemas.ClusterDetail, tags=["cluster"])
+@cached(expire_in=300)
 async def get_user_cluster(
     username: str, 
     title: str, 
@@ -211,13 +210,7 @@ async def create_element(
             embed_img = img.copy()
             hash_img = img.copy()
             blur_img = img.copy()
-            
-            # Generate embeddings
-            async with manager.get_model("clip", ClipEmbedder) as model:
-                result = await model.img2vec(embed_img)
-            if result is None:
-                raise ValueError("Failed to generate embeddings")
-                
+                            
             # Generate hash and check duplicates
             hash = await utils.hash(hash_img)
             dupl = await crud.get_element_by_hash(db, hash)
@@ -268,6 +261,7 @@ async def create_element(
 
 
 @router.get("/element/{id}", response_model=schemas.ElementPage, tags=["element"])
+@cached(expire_in=300)
 async def get_element(
     id: str, 
     user_id: str = Depends(validate_user),
@@ -276,92 +270,79 @@ async def get_element(
     element = await crud.get_element(db, id)
     if element is None:
         raise HTTPException(status_code=404, detail="Element Not Found")
-    img_embed = milvus_service.get(id)['image_embedding']
-    results = milvus_service.search(img_embed, field="image_embedding")
-    similar = [await crud.get_element(db, result.image_id) for result in results]
-    return schemas.ElementPage(**element.__dict__, similar=similar)
+    # img_embed = milvus_service.get(id)['image_embedding']
+    # results = milvus_service.search(img_embed, field="image_embedding")
+    # similar = [await crud.get_element(db, result.image_id) for result in results]
+    return schemas.ElementPage(**element.__dict__)
 
-@router.post("/search", response_model=None, tags=["search"])
-async def search(
-    query: str = Form(...),
-    user_id: str = Depends(validate_user),
-    db: Session = Depends(get_db)
-    ):
-    try:
-        async with manager.get_model("clip", ClipEmbedder) as model:
-            query_embedding = await model.text2vec(query)
-        results = milvus_service.search(
-            query_embedding=query_embedding,
-            field="text_embedding"
-        )
-        elements = [await crud.get_element(db, result.image_id) for result in results]
-        return schemas.ElementList(elements=elements)
-    except Exception as e:
-        return {"error": str(e)}
-
-@router.post("/visual-search", response_model=schemas.SimilarElements, tags=["search"])
-async def visual_search(
-    id: Optional[str] = Form(None),
-    image: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-    user_id: str = Depends(validate_user)):
-    try:      
-        element, img_embed = None, None  
-        if id:        
-            element = await crud.get_element(db, id)
-            img_embed = milvus_service.get(id)['image_embedding']
-        else:
-            contents = await image.read()
-            pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
-            async with manager.get_model("clip", ClipEmbedder) as model:
-                img_embed = await model.img2vec(pil_image)
-            element = schemas.ElementBase(url=None, title=None, desc=None, hash=None, placeholder=None, analysis=None, source=None, cluster_id=None, user_id=None)
-        results = milvus_service.search(
-            img_embed,
-            field="image_embedding"
-        )
-        elements = [await crud.get_element(db, result.image_id) for result in results]
-        return schemas.SimilarElements(
-            element=element,
-            similar=elements
-        )
-    except Exception as e:
-        return {"error": str(e)}
-
-# @router.post("/visual-search", response_model=schemas.ElementList, tags=["search"])
-# async def visual_search(
-#     id: Optional[str] = Form(None),
-#     db: Session = Depends(get_db),
-#     user_id: str = Depends(validate_user)):
+# @router.post("/search", response_model=None, tags=["search"])
+# @cached(expire_in=300)
+# async def search(
+#     query: str = Form(...),
+#     user_id: str = Depends(validate_user),
+#     db: Session = Depends(get_db)
+#     ):
 #     try:
-#         contents = await image.read()
-#         pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
-        
 #         async with manager.get_model("clip", ClipEmbedder) as model:
-#             img_embed = await model.img2vec(pil_image)
-                
-
+#             query_embedding = await model.text2vec(query)
+#         results = milvus_service.search(
+#             query_embedding=query_embedding,
+#             field="text_embedding"
+#         )
 #         elements = [await crud.get_element(db, result.image_id) for result in results]
 #         return schemas.ElementList(elements=elements)
 #     except Exception as e:
 #         return {"error": str(e)}
 
-@router.get("/feed", tags=["curation"], response_model=schemas.Recommedations)
+# @router.post("/visual-search", response_model=schemas.SimilarElements, tags=["search"])
+# @cached(expire_in=300)
+# async def visual_search(
+#     id: Optional[str] = Form(None),
+#     image: Optional[UploadFile] = File(None),
+#     db: Session = Depends(get_db),
+#     user_id: str = Depends(validate_user)):
+#     try:      
+#         element, img_embed = None, None  
+#         if id:        
+#             element = await crud.get_element(db, id)
+#             img_embed = milvus_service.get(id)['image_embedding']
+#         else:
+#             contents = await image.read()
+#             pil_image = Image.open(io.BytesIO(contents)).convert("RGB")
+#             async with manager.get_model("clip", ClipEmbedder) as model:
+#                 img_embed = await model.img2vec(pil_image)
+#             element = schemas.ElementBase(url=None, title=None, desc=None, hash=None, placeholder=None, analysis=None, source=None, cluster_id=None, user_id=None)
+#         results = milvus_service.search(
+#             img_embed,
+#             field="image_embedding"
+#         )
+#         elements = [await crud.get_element(db, result.image_id) for result in results]
+#         return schemas.SimilarElements(
+#             element=element,
+#             similar=elements
+#         )
+#     except Exception as e:
+#         return {"error": str(e)}
+
+
+@router.get("/feed", tags=["curation"], response_model=None)
 async def get_recommendations(
     limit: int = 20,
     offset: int = 0,
     db: Session = Depends(get_db),
     user_id: str = Depends(validate_user)
 ):
+    return {"elements": []}
     engine = crud.RecommendationEngine(db, milvus_service)
     recommendations = await engine.get_recommendations(
         user_id=user_id,
         limit=limit,
         offset=offset
     )
-    return schemas.Recommedations(elements=recommendations)
+    return schemas.Feed(elements=recommendations)
 
 @router.get("/explore", tags=["curation"], response_model=schemas.ClusterList)
+@cached(expire_in=300)
 async def explore(user_id: str = Depends(validate_user)):
     pass
 

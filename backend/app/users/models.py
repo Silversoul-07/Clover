@@ -2,6 +2,8 @@ import enum
 from numpy import save
 from sqlalchemy import Column, String, Boolean, JSON, DateTime, ForeignKey, BigInteger, Text, Enum, Integer
 from sqlalchemy.dialects.postgresql import UUID
+from pgvector.sqlalchemy import Vector
+
 from ..database import Base
 import uuid
 from datetime import datetime
@@ -59,20 +61,6 @@ class ClusterFollowers(Base):
     cluster_id = Column(UUID, ForeignKey('clusters.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     
-
-class CacheEntry(Base):
-    __tablename__ = "cache_entries"
-
-    key = Column(String, primary_key=True, index=True)
-    value = Column(Text)
-    expires_at = Column(DateTime, nullable=True)
-
-    @property
-    def is_expired(self) -> bool:
-        if self.expires_at is None:
-            return False
-        return datetime.utcnow() > self.expires_at
-    
 class InteractionType(enum.Enum):
     like = 'like'
     save = 'save'
@@ -87,3 +75,12 @@ class UserInteraction(Base):
     interaction_type = Column(Enum(InteractionType), nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     time_spent = Column(Integer)  # Time in seconds
+
+# Note needs serious improvements index type, schema support etc
+class Embedding(Base):
+    __tablename__ = "embeddings"
+    
+    id = Column(BigInteger, primary_key=True)
+    image_embedding = Column(Vector(512))
+    text_embedding = Column(Vector(512))
+    created_at = Column(DateTime, default=datetime.utcnow)

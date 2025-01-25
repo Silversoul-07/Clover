@@ -2,7 +2,7 @@ import LoginForm from "@/components/auth-form"
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Authentication",
+  title: "Auth",
   description: "Authentication page",
 };
 

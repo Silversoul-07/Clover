@@ -1,13 +1,12 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func 
-from .models import Users, Clusters, Elements, CacheEntry, UserInteraction, InteractionType
+from .models import Users, Clusters, Elements, UserInteraction, InteractionType, Embedding
 from . import schemas
 from typing import Optional, Any, Dict
 from datetime import datetime, timedelta
-import json
 import numpy as np
 from typing import List
-from ..milvus import MilvusService
+from sqlalchemy import select
 
 
 async def is_username_exists(db: Session, username: str):
@@ -90,133 +89,144 @@ async def init_clusters(db: Session, kwargs: Dict[str, Any]):
     db.refresh(user)
     return user.id
 
-class CacheManager:
-    def __init__(self, db_session):
-        self.db = db_session
-
-    async def get(self, key: str) -> Optional[Any]:
-        cache_entry = self.db.query(CacheEntry).filter(CacheEntry.key == key).first()
-        if cache_entry and not cache_entry.is_expired:
-            return json.loads(cache_entry.value)
-        return None
-
-    async def set(self, key: str, value: Any, expire_in: Optional[int] = None):
-        expires_at = None
-        if expire_in:
-            expires_at = datetime.utcnow() + timedelta(seconds=expire_in)
-
-        cache_entry = self.db.query(CacheEntry).filter(CacheEntry.key == key).first()
-        if cache_entry:
-            cache_entry.value = json.dumps(value)
-            cache_entry.expires_at = expires_at
-        else:
-            cache_entry = CacheEntry(
-                key=key,
-                value=json.dumps(value),
-                expires_at=expires_at
-            )
-            self.db.add(cache_entry)
-        
-        self.db.commit()
-
-    async def delete(self, key: str):
-        self.db.query(CacheEntry).filter(CacheEntry.key == key).delete()
-        self.db.commit()
         
 
-class RecommendationEngine:
-    def __init__(self, db: Session, milvus_client: MilvusService):
-        self.db = db
-        self.milvus_client = milvus_client
-        self.interaction_weights = {
-            InteractionType.like: 3.0,
-            InteractionType.save: 2.0,
-            InteractionType.click: 1.0
-        }
+# class RecommendationEngine:
+#     def __init__(self, db: Session, milvus_client: MilvusService):
+#         self.db = db
+#         self.milvus_client = milvus_client
+#         self.interaction_weights = {
+#             InteractionType.like: 3.0,
+#             InteractionType.save: 2.0,
+#             InteractionType.click: 1.0
+#         }
 
-    def _get_user_interactions(self, user_id: str, days: int = 30) -> Dict[int, float]:
-        """Get user's recent interactions with weights"""
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+#     def _get_user_interactions(self, user_id: str, days: int = 30) -> Dict[int, float]:
+#         """Get user's recent interactions with weights"""
+#         cutoff_date = datetime.utcnow() - timedelta(days=days)
         
-        interactions = self.db.query(
-            UserInteraction.element_id,
-            UserInteraction.interaction_type,
-            UserInteraction.timestamp
-        ).filter(
-            UserInteraction.user_id == user_id,
-            UserInteraction.timestamp >= cutoff_date
-        ).all()
+#         interactions = self.db.query(
+#             UserInteraction.element_id,
+#             UserInteraction.interaction_type,
+#             UserInteraction.timestamp
+#         ).filter(
+#             UserInteraction.user_id == user_id,
+#             UserInteraction.timestamp >= cutoff_date
+#         ).all()
 
-        # Calculate weighted scores
-        element_scores = {}
-        for element_id, interaction_type, timestamp in interactions:
-            # Add recency factor (1.0 to 0.5 based on age)
-            days_old = (datetime.utcnow() - timestamp).days
-            recency_factor = 1.0 - (days_old / (days * 2))
-            recency_factor = max(0.5, recency_factor)
+#         # Calculate weighted scores
+#         element_scores = {}
+#         for element_id, interaction_type, timestamp in interactions:
+#             # Add recency factor (1.0 to 0.5 based on age)
+#             days_old = (datetime.utcnow() - timestamp).days
+#             recency_factor = 1.0 - (days_old / (days * 2))
+#             recency_factor = max(0.5, recency_factor)
             
-            score = self.interaction_weights[interaction_type] * recency_factor
-            element_scores[element_id] = element_scores.get(element_id, 0) + score
+#             score = self.interaction_weights[interaction_type] * recency_factor
+#             element_scores[element_id] = element_scores.get(element_id, 0) + score
             
-        return element_scores
+#         return element_scores
 
-    async def get_recommendations(
-        self,
-        user_id: str,
-        limit: int = 20,
-        offset: int = 0
-    ) -> List[Elements]:
-        """Get personalized recommendations for user"""
+#     async def get_recommendations(
+#         self,
+#         user_id: str,
+#         limit: int = 20,
+#         offset: int = 0
+#     ) -> List[Elements]:
+#         """Get personalized recommendations for user"""
         
-        # Get user interaction history
-        interaction_scores = self._get_user_interactions(user_id)
+#         # Get user interaction history
+#         interaction_scores = self._get_user_interactions(user_id)
         
-        if not interaction_scores:
-            # Fall back to popular items if no interaction history
-            return self._get_popular_elements(limit, offset)
+#         if not interaction_scores:
+#             # Fall back to popular items if no interaction history
+#             return self._get_popular_elements(limit, offset)
 
-        # Get embeddings for interacted elements
-        interacted_elements = self.db.query(Elements).filter(
-            Elements.id.in_(interaction_scores.keys())
-        ).all()
+#         # Get embeddings for interacted elements
+#         interacted_elements = self.db.query(Elements).filter(
+#             Elements.id.in_(interaction_scores.keys())
+#         ).all()
 
-        # Aggregate embeddings weighted by interaction scores
-        embeddings = []
-        for element in interacted_elements:
-            if element.analysis and 'embedding' in element.analysis:
-                score = interaction_scores[element.id]
-                embeddings.append(
-                    np.array(element.analysis['embedding']) * score
-                )
+#         # Aggregate embeddings weighted by interaction scores
+#         embeddings = []
+#         for element in interacted_elements:
+#             if element.analysis and 'embedding' in element.analysis:
+#                 score = interaction_scores[element.id]
+#                 embeddings.append(
+#                     np.array(element.analysis['embedding']) * score
+#                 )
 
-        if not embeddings:
-            return self._get_popular_elements(limit, offset)
+#         if not embeddings:
+#             return self._get_popular_elements(limit, offset)
 
-        # Average the weighted embeddings
-        query_embedding = np.mean(embeddings, axis=0)
+#         # Average the weighted embeddings
+#         query_embedding = np.mean(embeddings, axis=0)
 
-        # Search similar vectors in Milvus
-        similar_ids = await self.milvus_client.search_similar_images(
-            query_embedding,
-            limit=limit * 2  # Get extra to filter out already seen
+#         # Search similar vectors in Milvus
+#         similar_ids = await self.milvus_client.search_similar_images(
+#             query_embedding,
+#             limit=limit * 2  # Get extra to filter out already seen
+#         )
+
+#         # Filter out elements user has already interacted with
+#         similar_ids = [id for id in similar_ids if id not in interaction_scores]
+
+#         # Get recommended elements
+#         recommendations = self.db.query(Elements).filter(
+#             Elements.id.in_(similar_ids[:limit])
+#         ).offset(offset).all()
+
+#         return recommendations
+
+#     def _get_popular_elements(self, limit: int, offset: int) -> List[Elements]:
+#         """Fallback to popular items"""
+#         popular = self.db.query(Elements).join(
+#             UserInteraction
+#         ).group_by(
+#             Elements.id
+#         ).order_by(
+#             func.count(UserInteraction.id).desc()
+#         ).offset(offset).limit(limit).all()
+
+#         if not popular:
+#             return self.db.query(Elements).order_by(func.random()).offset(offset).limit(limit).all()
+#         return popular
+    
+
+async def insert_vector(
+        db: Session,
+        image_id: str, 
+                       image_embedding: List[float], 
+                       text_embedding: Optional[List[float]] = None) -> None:
+    """Insert embeddings into database"""
+    try:
+        embedding = Embedding(
+            id=image_id,
+            image_embedding=image_embedding,
+            text_embedding=text_embedding
         )
+        db.add(embedding)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise RuntimeError(f"Failed to insert embeddings: {str(e)}")
 
-        # Filter out elements user has already interacted with
-        similar_ids = [id for id in similar_ids if id not in interaction_scores]
+async def vector_search(
+        db: Session,
+        query_embedding: List[float], 
+                       field: str, 
+                       limit: int = 50) -> List[schemas.SearchResult]:
+    """Search for similar embeddings using pgvector"""
+    if field not in ["image_embedding", "text_embedding"]:
+        raise ValueError("Invalid field. Must be 'image_embedding' or 'text_embedding'")
 
-        # Get recommended elements
-        recommendations = self.db.query(Elements).filter(
-            Elements.id.in_(similar_ids[:limit])
-        ).offset(offset).all()
-
-        return recommendations
-
-    def _get_popular_elements(self, limit: int, offset: int) -> List[Elements]:
-        """Fallback to popular items"""
-        return self.db.query(Elements).join(
-            UserInteraction
-        ).group_by(
-            Elements.id
-        ).order_by(
-            func.count(UserInteraction.id).desc()
-        ).offset(offset).limit(limit).all()
+    try:
+        stmt = select(
+            Embedding.id,
+            (Embedding.__table__.c[field].l2_distance(query_embedding)).label("similarity")
+        ).order_by("similarity").limit(limit)
+        
+        result = await db.execute(stmt)
+        return [schemas.SearchResult(image_id=row.id, score=row.similarity) for row in result.fetchall()]
+    except Exception as e:
+        raise RuntimeError(f"Failed to search embeddings: {str(e)}")

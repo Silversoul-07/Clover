@@ -1,0 +1,27 @@
+# sample config file for the ml-server
+models:
+# make it as dormant model
+  - name: clip-text
+    repo_id: "immich-app/ViT-L-16-SigLIP-384__webli"
+    filename: "textual/model.onnx"
+    priority: High
+
+  - name: clip-image
+    repo_id: "immich-app/ViT-L-16-SigLIP-384__webli"
+    filename: "visual/model.onnx"
+    priority: High
+
+  - name: tagger
+    repo_id: "SmilingWolf/wd-vit-large-tagger-v3"
+    filename: "model.onnx"
+    priority: Medium
+
+  - name: nsfw
+    repo_id: "immich-app/nsfw-detection"
+    filename: "model.onnx"
+    priority: null
+
+  - name: ai-classifier
+    repo_id: "immich-app/ai-classifier"
+    filename: "model.onnx"
+    priority: null

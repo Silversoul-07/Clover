@@ -12,7 +12,7 @@ interface RootLayoutProps {
 // improve layout add dynamic header and react suspense
 export const metadata = {
   title: {
-    template: '%s - Clover',
+    template: '%s • Clover',
   },
   description: 'Store and view media from the internet',
 };
