@@ -109,12 +109,12 @@ export default function LoginForm({ unauthorized }: { unauthorized?: boolean }) 
                     <section>
                         <video autoPlay muted loop className="absolute top-0 left-0 w-full h-full object-cover z-0">
                             <source
-                                src={`/assets/login-bg.mp4`}
+                                src={`/assets/login-bg.webm`}
                                 type="video/mp4"
                             />
                             Your browser does not support the video tag.
                         </video>
-                        <div className="absolute top-0 left-0 w-full h-full bg-black opacity-40 z-1" />
+                        <div className="absolute top-0 left-0 w-full h-full bg-black opacity-30 z-1" />
                     </section>
                 )}
 

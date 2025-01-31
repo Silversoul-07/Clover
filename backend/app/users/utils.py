@@ -73,16 +73,26 @@ async def hash(image: Image):
     return str(value)
 
 async def text2vec(text: str):
-    response = requests.post(f"{env.ml_url}/api/v2/clip", json={"text": text})
+    payload = {"text": text}
+    response = requests.post(f"{env.ml_url}/api/v2/clip", json=payload)
     if response.status_code != 200:
         return None
-    return response.json()["embeddings"]
+    return response.json()["embedding"]
 
 async def img2vec(image: Image):
-    response = requests.post(f"{env.ml_url}/api/v2/clip", files={"image": image})
+    # Preprocess image to rank 4 list of floats
+    image = image.resize((384, 384))  # Adjust size as needed
+    image = image.convert('RGB')
+    image_array = np.array(image).astype(float)
+    image_array = np.transpose(image_array, (2, 0, 1))  # Channels first
+    image_array = np.expand_dims(image_array, axis=0)  # Batch size of 1
+    payload = {"data": image_array.tolist()}
+    print(type(payload["data"][0][0]))
+    response = requests.post(f"http://localhost:8000/api/v2/image-embedder", json=payload)
     if response.status_code != 200:
+        print(response.json()["detail"])
         return None
-    return response.json()["embeddings"]
+    return response.json()['result'][0]
     
 
 

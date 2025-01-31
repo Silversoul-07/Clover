@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import Any, List
 import numpy as np
 import yaml
 import os
@@ -12,7 +12,7 @@ from huggingface_hub import hf_hub_download
 from .utils import ModelWrapper
 
 class InputData(BaseModel):
-    data: List[float]
+    data: Any
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,6 +36,9 @@ def load_models():
         config = yaml.safe_load(file)
 
     for model in config.get('models', []):
+        if model['priority'] == None:
+            continue
+
         repo_id = model['repo_id']
         filename = model['filename']
         name = model['name']
@@ -75,14 +78,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# list all available models
+@app.get("/api/v2/models")
+async def get_models():
+    return list(models.keys())
+
 @app.post("/api/v2/{model_name}")
 async def infer(model_name: str, input_data: InputData):
     if model_name not in models:
         raise HTTPException(status_code=404, detail="Model not found")
     
     try:
-        data = np.array(input_data.data, dtype=np.float32)
-        result = models[model_name].infer(data)
+        # data = np.array(input_data.data, dtype=np.float32)
+        result = models[model_name].infer(input_data.data)
         return {"result": result.tolist()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -98,7 +106,3 @@ async def health(model_name: str):
         "model_loaded": model.model is not None,
         "memory_available": model.can_load_model()
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)

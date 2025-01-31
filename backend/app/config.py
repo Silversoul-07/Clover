@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "mybucket"
+    storage_path: str = "storage"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

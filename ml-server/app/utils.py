@@ -38,8 +38,9 @@ class ModelWrapper:
         
         if self.model is None:
             raise RuntimeError("Model could not be loaded due to memory constraints")
-        
-        return self.model.run(None, {"input": data})[0]
+        print(self.model.get_inputs()[0])
+        input = self.model.get_inputs()[0]
+        return self.model.run(None, {input.name: data})[0]
     
     # method to get input and output names
     def get_input_output_names(self):

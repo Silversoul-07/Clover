@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 import io
 from uuid import uuid4
@@ -8,6 +9,14 @@ from PIL import Image
 from .config import get_env
 
 env = get_env()
+
+def get_total_space(path):
+    total, used, free = shutil.disk_usage(path)
+    return {
+        'total_space': total,
+        'used_space': used,
+        'free_space': free
+    }
 
 class MinioClient:
     def __init__(self, bucket_name: str) -> None:
@@ -76,7 +85,9 @@ class MinioClient:
                 filename,
                 file_like_object,
                 length=len(file_content),
-                content_type=content_type
+                content_type=content_type,
+                storage_class='STANDARD',  # Adjust based on storage media if needed
+                metadata={'storage_path': env.storage_path}
             )
             return f"http://localhost:9000/{self.bucket_name}/{filename}"
 
