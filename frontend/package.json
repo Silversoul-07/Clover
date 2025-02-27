@@ -19,6 +19,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "eslint": "^9.17.0",
+    "framer-motion": "^12.0.11",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.465.0",
     "next": "15.0.3",

@@ -1,32 +1,21 @@
-# sample config file for the ml-server
+# sample config.yml
+
 models:
-# make it as dormant model
-  - name: text-embedder
+  text-embedder:
     repo_id: "immich-app/ViT-L-16-SigLIP-384__webli"
-    filename: "textual/model.onnx"
-    priority: High
+    files:
+      - "textual/model.onnx"
+      - "textual/tokenizer.json"
+      - "textual/tokenizer_config.json"
 
-  - name: image-embedder
+  image-embedder:
     repo_id: "immich-app/ViT-L-16-SigLIP-384__webli"
-    filename: "visual/model.onnx"
-    priority: High
+    files:
+      - "visual/model.onnx"
+      - "visual/preprocess_cfg.json"
 
-  - name: image-tagger
+  tagger:
     repo_id: "SmilingWolf/wd-vit-large-tagger-v3"
-    filename: "model.onnx"
-    priority: Medium
-
-  - name: nsfw-detector
-    repo_id: "immich-app/nsfw-detection"
-    filename: "model.onnx"
-    priority: null
-
-  - name: ai-classifier
-    repo_id: "immich-app/ai-classifier"
-    filename: "model.onnx"
-    priority: null
-
-  - name: aesthetics-predictor
-    repo_id: "immich-app/aesthetics"
-    filename: "model.onnx"
-    priority: null
+    files:
+      - "model.onnx"
+      - "selected_tags.csv"

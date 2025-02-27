@@ -14,8 +14,12 @@ Base = declarative_base()
 def init_db(Base, engine):
     with engine.connect() as connection:
         connection.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
+        connection.execute(text('CREATE EXTENSION IF NOT EXISTS pg_trgm'))
+        # connection.execute(text("DROP TABLE tags CASCADE"))
         connection.commit()
+    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    print("Database initialized")
 
 def get_db():
     db = SessionLocal()

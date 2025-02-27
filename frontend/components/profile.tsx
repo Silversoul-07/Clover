@@ -117,7 +117,7 @@ const EditProfile= ({profile}: {profile:Profile}) => {
             <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
-              value={formData.bio}
+              // value={'bio' in formData ? formData.bio : ''}
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               className="h-24"
             />

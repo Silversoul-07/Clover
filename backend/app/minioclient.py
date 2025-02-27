@@ -50,11 +50,11 @@ class MinioClient:
 
     async def upload(
         self,
+        filename: str,
         file_content: bytes,
         content_type: Optional[str] = None
     ) -> Optional[str]:
         try:
-            filename = str(uuid4())
             file_like_object = io.BytesIO(file_content)
             
             # Detect file type using magic numbers if content_type not provided
@@ -86,12 +86,11 @@ class MinioClient:
                 file_like_object,
                 length=len(file_content),
                 content_type=content_type,
-                storage_class='STANDARD',  # Adjust based on storage media if needed
-                metadata={'storage_path': env.storage_path}
             )
             return f"http://localhost:9000/{self.bucket_name}/{filename}"
 
         except Exception as e:
+            raise e
             print(f"Error uploading to MinIO: {e}")
             return None
         

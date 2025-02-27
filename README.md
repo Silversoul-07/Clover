@@ -17,7 +17,8 @@
 
 ## **Backend**
 1. **Tags Database**:
-   - Refactor or implement database support for tags.
+   ~~- Refactor or implement database support for tags.~~
+   - Fix upload image.
 2. **Search Improvements**:
    - Fix general search, visual search, and element fetch functionality.
 3. **Recommendation System**:
@@ -49,3 +50,4 @@
    - Add video upload and playback support to the frontend.
 8. **Cluster Pop-Over**:
    - Implement an intuitive "Add to Cluster" pop-over for easy clustering.
+8. **Create image and cluster and visual search as model**

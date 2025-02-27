@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const baseUrl = 'http://localhost:3000';
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL
 const baseDir = 'app';
 const excludeDirs = ['api'];
 

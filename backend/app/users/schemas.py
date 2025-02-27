@@ -3,6 +3,10 @@ from typing import List, Optional, Union
 
 # Note add thumbnail to clusters and stats followers, elements, owner to clusters, is followed, stats cluster, elements, likes, element stats is liked
 
+class ClientCredentials(BaseModel):
+    client_id: str
+    client_secret: str
+
 class Token(BaseModel):
     token: str
     token_type: str
@@ -21,7 +25,7 @@ class createUserForm(BaseModel):
 
 class createClusterForm(BaseModel):
     title: str
-    desc: str
+    description: str
 
 class ClusterBase(BaseModel):
     title: str
@@ -86,7 +90,7 @@ class ClusterStats(BaseModel):
         extra = "ignore"
 
 class ClusterDetail(ClusterBase):
-    desc: str
+    description: str
     username: str
     avatar: Optional[str] = None
     stats: ClusterStats
@@ -125,7 +129,7 @@ class ClusterList(BaseModel):
 
 class Id(BaseModel):
     # id might be uuid or int
-    id: Union[UUID4, str]
+    id: str
 
     class Config:
         from_attributes = True
@@ -151,3 +155,30 @@ class EmbeddingCreate(BaseModel):
     image_id: str
     image_embedding: List[float]
     text_embedding: Optional[List[float]] = None
+
+from pydantic import BaseModel
+from uuid import UUID
+from datetime import datetime
+from enum import Enum
+
+class InteractionTypeEnum(str, Enum):
+    like = 'like'
+    save = 'save'
+    click = 'click'
+
+class UserInteractionCreate(BaseModel):
+    user_id: UUID
+    element_id: UUID
+    interaction_type: InteractionTypeEnum
+    time_spent_seconds: int = 0
+
+class UserInteractionOut(BaseModel):
+    id: UUID
+    user_id: UUID
+    element_id: UUID
+    interaction_type: InteractionTypeEnum
+    timestamp: datetime
+    time_spent_seconds: int
+
+    class Config:
+        from_attributes = True

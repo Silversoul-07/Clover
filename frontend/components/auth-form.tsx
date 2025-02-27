@@ -68,7 +68,6 @@ export default function LoginForm({ unauthorized }: { unauthorized?: boolean }) 
                     toast.error('Please upload a valid image file');
                     return;
                 }
-
                 const { error } = await signup(formData);
                 if (error) {
                     toast.error(error.detail || 'Registration failed. Please try again.');
@@ -130,7 +129,7 @@ export default function LoginForm({ unauthorized }: { unauthorized?: boolean }) 
                                             </div>
                                             <span className="sr-only">Acme Inc.</span>
                                         </a>
-                                        <h1 className="text-xl font-bold">Welcome to Clover</h1>
+                                        <h1 className="text-xl font-bold">Welcome to {process.env.NEXT_PUBLIC_APP_NAME}</h1>
                                         <div className="text-center text-sm">
                                             {isLogin ? "Don't have an account? " : "Already have an account? "}
                                             <span className="underline underline-offset-4" onClick={() => setIsLogin(!isLogin)}>

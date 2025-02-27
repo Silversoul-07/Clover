@@ -2,8 +2,6 @@ import '@/styles/globals.css';
 import React from 'react';
 import { ThemeProvider } from "@/components/themes"
 import { Toaster } from "@/components/ui/sonner"
-import { Suspense } from 'react';
-import Loading from '@/app/loading';
 
 interface RootLayoutProps {
   children: React.ReactNode;
@@ -12,7 +10,7 @@ interface RootLayoutProps {
 // improve layout add dynamic header and react suspense
 export const metadata = {
   title: {
-    template: '%s • Clover',
+    template: `%s • ${process.env.NEXT_PUBLIC_APP_NAME}`
   },
   description: 'Store and view media from the internet',
 };
@@ -28,9 +26,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <Suspense fallback={<Loading />} >
             {children}
-          </Suspense>
           <Toaster position="top-right" richColors expand={true} toastOptions={{ className: 'mt-[40px]' }} />
         </ThemeProvider>
       </body>

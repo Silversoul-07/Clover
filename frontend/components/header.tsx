@@ -82,13 +82,13 @@ const Header = () => {
           <nav className="flex items-center">
             {/* Left section */}
             <div className="flex items-center gap-4">
-              <Link href="/" className="text-2xl font-bold">Clover</Link>
+              <Link href="/" as="/" className="text-lg font-bold">{process.env.NEXT_PUBLIC_APP_NAME}</Link>
 
               {/* Desktop Navigation */}
               <div className="hidden md:flex items-center">
                 {navItems.map((item) => (
                   <Button className='rounded-full' key={item.href} variant={item.href === pathname ? 'default' : 'ghost'}>
-                    <Link href={item.href}>{item.label}</Link>
+                    <Link href={item.href} as={item.href}>{item.label}</Link>
                   </Button>
 
                 ))}
@@ -103,7 +103,7 @@ const Header = () => {
                     <input
                       type="search"
                       placeholder="Search..."
-                      className="w-full pr-12 pl-10 py-2 rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-pink-300"                      
+                      className="w-full pr-12 pl-10 py-2 rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-300"                      
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
